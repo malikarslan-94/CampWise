@@ -1,0 +1,77 @@
+[
+  {
+    "tenantId": "web-yoowifi-my",
+    "displayName": "YooWifi Malaysia Website",
+    "family": "website",
+    "source": "urwifi",
+    "platformValue": "web",
+    "baseUrls": {
+      "dispatcher": "https://coreapi.yoowifi.com/jane2/api/apidispatcher",
+      "restOrder": "https://coreapi.yoowifi.com/yw-services/api/order",
+      "restCharges": "https://coreapi.yoowifi.com/yw-services/api/order/charges"
+    },
+    "auth": {
+      "mode": "none"
+    },
+    "localeRule": {
+      "default": "EN",
+      "remap": { "JP": "JA" }
+    },
+    "allowedTools": ["search_plans", "get_pricing", "get_coverage", "check_order_status"],
+    "publicChat": true,
+    "allowedOrigins": ["http://localhost:3000", "http://localhost:5173"],
+    "rateLimit": { "requestsPerMinute": 60 }
+  },
+  {
+    "tenantId": "app-skylink",
+    "displayName": "Skylink Mobile App",
+    "family": "legacy_app",
+    "source": "skylink",
+    "platformValue": "app",
+    "baseUrls": {
+      "dispatcher": "https://coreapi.yoowifi.com/jane2/api/apidispatcher"
+    },
+    "auth": {
+      "mode": "none",
+      "encryption": {
+        "enabled": true,
+        "keyRef": "AESKEY_LEGACY_APP",
+        "algorithm": "aes-256-cbc"
+      }
+    },
+    "localeRule": {
+      "default": "EN"
+    },
+    "allowedTools": ["search_plans", "get_coverage", "check_order_status"],
+    "publicChat": false,
+    "allowedOrigins": [],
+    "rateLimit": { "requestsPerMinute": 30 }
+  },
+  {
+    "tenantId": "portal-tune",
+    "displayName": "Tune Portal",
+    "family": "portal",
+    "source": "tune",
+    "platformValue": "b2b",
+    "platformOverrides": {
+      "localPlans": "crm",
+      "activateEsim": "crm"
+    },
+    "baseUrls": {
+      "dispatcher": "https://coreapi.yoowifi.com/jane2/api/apidispatcher",
+      "crmHost": "https://crm.yoowifi.com:8443",
+      "extApi": "https://extapi.yoowifi.com:443"
+    },
+    "auth": {
+      "mode": "shared_secret",
+      "sharedSecretRef": "SECRET_PORTAL_TUNE"
+    },
+    "localeRule": {
+      "default": "EN"
+    },
+    "allowedTools": ["search_plans", "get_pricing", "get_coverage", "check_order_status"],
+    "publicChat": false,
+    "allowedOrigins": [],
+    "rateLimit": { "requestsPerMinute": 120 }
+  }
+]

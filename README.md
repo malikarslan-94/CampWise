@@ -132,6 +132,55 @@ Phase 2 will add: `ANTHROPIC_API_KEY`, `SESSION_SIGNING_KEY` (HMAC key for sessi
 `GROUNDING_ENABLED`. Startup validation must cover these the same way it covers tenant secret
 refs — missing key, refuse to start.
 
+## Logging
+
+Structured logs go to **stdout**, one JSON object per line (pino). There is no log
+file — in production, capture stdout with your process manager or log collector.
+
+```bash
+LOG_LEVEL=debug LOG_PRETTY=1 npm run dev     # readable, every step
+npm start 2>&1 | tee server.log              # keep a copy
+npm start | grep step14_chat_complete        # just the outcomes
+```
+
+| Variable | Values | Meaning |
+|---|---|---|
+| `LOG_LEVEL` | `trace` … `fatal` (default `info`) | `debug` traces every step of a request; `info` records outcomes worth alerting on |
+| `LOG_PRETTY` | `1` | Human-readable dev format instead of JSON. Leave unset in production |
+
+Every chat log line carries `tenantId`, `sessionId` and `requestId` where known, so
+one conversation can be followed end to end. A single `/chat` request emits, in order:
+
+```
+step6_message_received     messageChars=36
+step7_pass_verified        tenantId=… auth=anonymous
+step8_session_loaded       historyTurns=0 locale=vi
+step9_rate_limit_passed    clientKey=ip
+step11_responder_start     auth=anonymous
+tool_invoked               toolName=search_plans argKeys=[…]
+upstream_call              host=coreapi.yoowifi.com status=200 latencyMs=239
+tool_finished              ok=true
+step13_session_saved       historyTurns=2
+step14_chat_complete       latencyMs=241 answerChars=3738
+```
+
+Tool **argument names** are logged, never their values — the names show what the
+model asked for without recording whatever a user typed.
+
+## Smoke test
+
+Drives a dummy app payload through every stage of the chat pipeline **up to but not
+including the model**, printing what each one produced.
+
+```bash
+npm run smoke            # includes two live calls to coreapi.yoowifi.com
+npm run smoke:offline    # skips them
+npm run smoke -- --quiet # stage summaries only, no step logs
+```
+
+Runs with no `.env` — it supplies dev defaults for anything unset. See
+[scripts/smoke-chat.ts](scripts/smoke-chat.ts).
+
 ## Tests
 
 ```bash
