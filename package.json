@@ -10,8 +10,6 @@
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "tsx scripts/smoke-chat.ts",
-    "smoke:offline": "tsx scripts/smoke-chat.ts --offline",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

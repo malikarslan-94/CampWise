@@ -1,16 +1,11 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { loadConfig, validateChatConfig } from './config.js';
-import { loadRegistry, getRegistry, collectChatOrigins } from './registry/registry.js';
+import { loadConfig } from './config.js';
+import { loadRegistry, getRegistry } from './registry/registry.js';
 import { validateSecretRefs } from './config.js';
 import { createMcpServer } from './server.js';
 import { tenantAuthMiddleware } from './middleware/tenantAuth.js';
 import { rootLogger } from './lib/logger.js';
-import { createChatRoutes } from './ai/routes.js';
-import { InMemorySessionStore } from './ai/session/store.js';
-import { DirectToolInvoker } from './ai/DirectToolInvoker.js';
-import { StubResponder } from './ai/stubResponder.js';
-import { RecaptchaVerifier } from './ai/recaptcha.js';
 
 async function main() {
   // ── Startup validation ────────────────────────────────────────────────────
@@ -25,26 +20,11 @@ async function main() {
   const mcpServer = createMcpServer();
 
   // ── Chat module ───────────────────────────────────────────────────────────
-  // Mounted only when at least one tenant has opted in. A tenant opting in without
-  // the chat secrets present is a misconfiguration worth failing on at startup,
-  // rather than on the first user's message.
-  const chatOrigins = collectChatOrigins(registry.getAllTenants());
-  let chatRouter: ((req: IncomingMessage, res: ServerResponse) => Promise<boolean>) | undefined;
-
-  if (chatOrigins.length > 0) {
-    validateChatConfig();
-    chatRouter = createChatRoutes({
-      registry,
-      sessions: new InMemorySessionStore(),
-      // Phase E: no model yet. Swapped for the Claude tool runner in phase F.
-      responder: new StubResponder(new DirectToolInvoker()),
-      captcha: new RecaptchaVerifier(config.RECAPTCHA_SECRET!),
-      signingKey: config.SESSION_SIGNING_KEY!,
-    });
-    rootLogger.info({ origins: chatOrigins.length }, 'chat_module_enabled');
-  } else {
-    rootLogger.info('chat_module_disabled_no_public_tenants');
-  }
+  // Not mounted. Everything it needs is built — `createChatRoutes` in ai/routes.ts
+  // takes a registry, a session store, a captcha verifier and a ChatResponder — but
+  // no responder exists until the Claude tool runner lands in phase F. Wiring it up
+  // is one call there, plus validateChatConfig() to make the chat secrets mandatory
+  // at startup for any tenant with publicChat enabled.
 
   // ── HTTP Server ───────────────────────────────────────────────────────────
   const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -55,11 +35,7 @@ async function main() {
       return;
     }
 
-    // Chat endpoints authenticate with a signed session pass, not the service key,
-    // so they sit in front of the MCP middleware rather than behind it.
-    if (chatRouter && (await chatRouter(req, res))) return;
-
-    // All remaining traffic goes through tenant auth middleware
+    // All MCP traffic goes through tenant auth middleware
     await tenantAuthMiddleware(req, res, async () => {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless

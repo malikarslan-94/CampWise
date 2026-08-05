@@ -19,17 +19,14 @@ import type { CaptchaVerifier } from './recaptcha.js';
 import { readJsonBody, sendJson, applyCors, clientIp } from './http.js';
 
 /**
- * Produces the answer for one user message. Phase E ships a stub; phase F swaps in
- * the Claude tool runner. Everything around it — the gate, sessions, tenancy — is
- * identical either way, which is the point of proving the pipeline first.
+ * Produces the answer for one user message.
+ *
+ * Everything around it — the gate, sessions, tenancy, rate limits — is independent
+ * of how the answer is produced, so the model can be swapped or bypassed without
+ * touching any of it.
  */
 export interface ChatResponder {
-  respond(input: {
-    session: SessionData;
-    message: string;
-    /** Phase E only — lets the stub drive a tool call without a model. */
-    args?: Record<string, unknown>;
-  }): Promise<ChatReply>;
+  respond(input: { session: SessionData; message: string }): Promise<ChatReply>;
 }
 
 export interface ChatReply {
@@ -65,12 +62,6 @@ const ChatBody = z.object({
   /** Callers may switch language mid-conversation. */
   locale: z.string().max(35).optional(),
   deviceId: z.string().min(1).max(128).optional(),
-  /**
-   * Phase E only: lets the stub responder drive a real tool call without a model.
-   * Harmless by construction — tool arguments cannot carry identity or tenancy, so
-   * the worst a caller does with this is search for plans.
-   */
-  debugToolArgs: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -231,11 +222,7 @@ export function createChatRoutes(deps: ChatRoutesDeps) {
 
     logger.debug({ auth: session.auth }, 'step11_responder_start');
     const start = Date.now();
-    const reply = await deps.responder.respond({
-      session,
-      message: parsed.data.message,
-      args: parsed.data.debugToolArgs,
-    });
+    const reply = await deps.responder.respond({ session, message: parsed.data.message });
     logger.debug({ latencyMs: Date.now() - start }, 'step12_responder_done');
 
     appendTurn(session, 'user', parsed.data.message);

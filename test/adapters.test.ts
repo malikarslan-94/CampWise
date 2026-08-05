@@ -201,11 +201,6 @@ describe('portalAdapter', () => {
     expect(mockHttpPost.mock.calls[0][1].body.platform).toBe('crm');
   });
 
-  it('searchPlans — sends a language field (portal previously sent none)', async () => {
-    mockHttpPost.mockResolvedValue({ status: 200, data: { data: [] } });
-    await portalAdapter.searchPlans({ originCountry: 'MY', destinationCountries: ['SG'] }, portalCtx());
-    expect(mockHttpPost.mock.calls[0][1].body.language).toBe('EN');
-  });
 
   it('searchPlans — security field injected then stripped (body ref has no security after call)', async () => {
     // mock.calls stores the body BY REFERENCE. stripSecurity() deletes 'security' from that same
@@ -250,38 +245,5 @@ describe('portalAdapter', () => {
     const body = mockHttpPost.mock.calls[0][1].body as Record<string, unknown>;
     expect(ctx.resolvedSecrets.sharedSecret).toBe('portal-secret');
     expect('security' in body).toBe(false);
-  });
-});
-
-// ── Caller locale reaching upstream ───────────────────────────────────────────
-
-describe('language resolution', () => {
-  beforeEach(() => mockHttpPost.mockReset());
-
-  const withLocale = (locale?: string): ResolvedContext => {
-    const ctx = makeCtx();
-    return { ...ctx, tenantContext: { ...ctx.tenantContext, locale: locale as never } };
-  };
-
-  it('uses the tenant default when the caller supplied no locale', async () => {
-    mockHttpPost.mockResolvedValue({ status: 200, data: { data: [] } });
-    await websiteAdapter.searchPlans({ originCountry: 'MY', destinationCountries: ['SG'] }, withLocale());
-    expect(mockHttpPost.mock.calls[0][1].body.language).toBe('EN');
-  });
-
-  it("sends the caller's locale when present", async () => {
-    mockHttpPost.mockResolvedValue({ status: 200, data: { data: [] } });
-    await websiteAdapter.searchPlans({ originCountry: 'MY', destinationCountries: ['SG'] }, withLocale('ms'));
-    expect(mockHttpPost.mock.calls[0][1].body.language).toBe('MS');
-  });
-
-  it('applies the tenant remap on top of the shared table', async () => {
-    mockHttpPost.mockResolvedValue({ status: 200, data: { data: [] } });
-    const ctx = makeCtx({ localeRule: { default: 'EN', remap: { MS: 'BM' } } });
-    await websiteAdapter.searchPlans(
-      { originCountry: 'MY', destinationCountries: ['SG'] },
-      { ...ctx, tenantContext: { ...ctx.tenantContext, locale: 'ms' as never } },
-    );
-    expect(mockHttpPost.mock.calls[0][1].body.language).toBe('BM');
   });
 });

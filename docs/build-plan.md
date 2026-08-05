@@ -178,19 +178,20 @@ moment a conversation could reach it. There is now no field in any tool schema t
 | E2 | `POST /chat` — gate in order: pass signature → session lookup → rate limits → Zod. Every failure short-circuits **before** the responder, so a rejected request costs nothing. | ✅ |
 | E3 | CORS from the same origin map that resolves tenancy — one source of truth. | ✅ |
 | E4 | `DirectToolInvoker` fills `tenantContextStorage` from the session and calls the Phase-1 handlers in-process. Refuses auth-required tools on anonymous sessions as a second guard behind menu filtering. | ✅ |
-| E5 | Both routes wired into `src/index.ts`, in front of the MCP middleware since they authenticate with a pass rather than the service key. | ✅ |
-| E6 | **`ChatResponder` seam** — `StubResponder` now, the Claude tool runner in F. Everything around it is identical either way. | ✅ |
+| E5 | **Not mounted.** `createChatRoutes` needs a `ChatResponder`, and none exists until the Claude tool runner lands in phase F. Wiring is one call in `index.ts` there, plus `validateChatConfig()` so a tenant with `publicChat` cannot start without the chat secrets. | ⏸ deferred to F |
+| E6 | **`ChatResponder` seam** — the gate, sessions, tenancy and rate limits are all independent of how the answer is produced. | ✅ |
 | E7 | **`src/tools/registry.ts`** — one tool table shared by MCP and chat, carrying `requiresAuth` and `hiddenFromChat`. `server.ts` refactored onto it. | ✅ |
 
-**Files:** new `src/ai/{routes,http,recaptcha,stubResponder,DirectToolInvoker}.ts`,
-new `src/tools/registry.ts`, `src/server.ts`, `src/index.ts`, new `test/chatRoutes.test.ts`
+**Files:** new `src/ai/{routes,http,recaptcha,DirectToolInvoker}.ts`, new `src/ai/session/*`,
+new `src/tools/registry.ts`, `src/server.ts`, `src/index.ts`
 
-**Result:** typecheck clean, **147 tests across 18 files** (was 129 across 17).
+**Result:** typecheck clean, **59 tests across 10 files** (all pre-existing).
 
-> **The chat module only mounts when a tenant has opted in.** If any tenant is
-> `publicChat: true`, `validateChatConfig()` runs at startup and the server refuses to boot
-> without `ANTHROPIC_API_KEY`, `SESSION_SIGNING_KEY` and `RECAPTCHA_SECRET` — a half-configured
-> public endpoint is worse than none. With no public tenants it logs and stays off.
+> **Testing is deferred.** At the owner's direction, no tests were added for phases A–E and the
+> temporary scaffolding (stub responder, smoke script) has been removed. The chat layer is
+> therefore **unverified** — `src/ai/*` has no coverage, and the phase A–D behaviour changes
+> (identity out of tool schemas, locale plumbing, re-keyed rate limits, session pass signing)
+> rest on typecheck alone. Testing happens at the end.
 
 > **One behaviour change:** `create_order`'s MCP message now comes from `NotImplementedError`
 > rather than a hardcoded string in `server.ts` (dropping a trailing full stop). The old inline

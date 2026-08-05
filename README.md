@@ -167,20 +167,6 @@ step14_chat_complete       latencyMs=241 answerChars=3738
 Tool **argument names** are logged, never their values — the names show what the
 model asked for without recording whatever a user typed.
 
-## Smoke test
-
-Drives a dummy app payload through every stage of the chat pipeline **up to but not
-including the model**, printing what each one produced.
-
-```bash
-npm run smoke            # includes two live calls to coreapi.yoowifi.com
-npm run smoke:offline    # skips them
-npm run smoke -- --quiet # stage summaries only, no step logs
-```
-
-Runs with no `.env` — it supplies dev defaults for anything unset. See
-[scripts/smoke-chat.ts](scripts/smoke-chat.ts).
-
 ## Tests
 
 ```bash
